@@ -22,7 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define CShiftPWM_h
 
 #include <Arduino.h>
-
+#ifdef ESP8266
+void ShiftPWM_timer_init();
+#endif
 class CShiftPWM{
 public:
 	CShiftPWM(int timerInUse, bool noSPI, int latchPin, int dataPin, int clockPin);
@@ -51,8 +53,9 @@ public:
 private:
 	void OneByOne_core(int delaytime);
 	bool IsValidPin(int pin);
-	void InitTimer1(void);
-	
+	#if defined(OCR1A)
+		void InitTimer1(void);
+	#endif
 	#if defined(OCR3A)
 		// Arduino Leonardo or Micro (32u4)
 		void InitTimer3(void);

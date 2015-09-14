@@ -274,6 +274,8 @@ void CShiftPWM::Start(int ledFrequency, unsigned char maxBrightness){
 	digitalWrite(m_clockPin, LOW);
 	digitalWrite(m_dataPin, LOW);
 
+#ifndef ESP8266
+
 	if(!m_noSPI){ // initialize SPI when used
 		// The least significant bit shoult be sent out by the SPI port first.
 		// equals SPI.setBitOrder(LSBFIRST);
@@ -321,8 +323,13 @@ void CShiftPWM::Start(int ledFrequency, unsigned char maxBrightness){
 		Serial.println(F("Interrupts are disabled because load is too high."));
 		cli(); //Disable interrupts
 	}
+#else
+	//InitTimer0(); //not yet from here
+	ShiftPWM_timer_init();
+#endif
 }
 
+#if defined(OCR1A)
 void CShiftPWM::InitTimer1(void){
 	/* Configure timer1 in CTC mode: clear the timer on compare match
 	* See the Atmega328 Datasheet 15.9.2 for an explanation on CTC mode.
@@ -351,6 +358,7 @@ void CShiftPWM::InitTimer1(void){
 	/* Finally enable the timer interrupt, see datasheet  15.11.8) */
 	bitSet(TIMSK1,OCIE1A);
 }
+#endif
 
 #if defined(OCR2A)
 void CShiftPWM::InitTimer2(void){
@@ -442,7 +450,7 @@ void CShiftPWM::PrintInterruptLoad(void){
 	//This function prints information on the interrupt settings for ShiftPWM
 	//It runs a delay loop 2 times: once with interrupts enabled, once disabled.
 	//From the difference in duration, it can calculate the load of the interrupt on the program.
-
+#ifndef ESP8266
 	unsigned long start1,end1,time1,start2,end2,time2,k;
 	double load, cycles_per_int, interrupt_frequency;
 
@@ -572,4 +580,5 @@ void CShiftPWM::PrintInterruptLoad(void){
 			bitSet(TIMSK2,OCIE2A);
 		}
 	#endif
+#endif
 }
