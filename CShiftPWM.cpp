@@ -28,6 +28,7 @@ CShiftPWM::CShiftPWM(int timerInUse, bool noSPI, int latchPin, int dataPin, int 
 					m_timer(timerInUse), m_noSPI(noSPI), m_latchPin(latchPin), m_dataPin(dataPin), m_clockPin(clockPin){
 	m_ledFrequency = 0;
 	m_maxBrightness = 0;
+	m_bLimit=0;
 	m_amountOfRegisters = 0;
 	m_amountOfOutputs = 0;
 	m_counter = 0;
@@ -129,6 +130,8 @@ void CShiftPWM::SetAllRGB(unsigned char r,unsigned char g,unsigned char b){
 }
 
 void CShiftPWM::SetHSV(int led, unsigned int hue, unsigned int sat, unsigned int val, int offset){
+	if(m_bLimit && m_bLimit<m_maxBrightness) // m_bLimit=0 means not set
+		val=val*m_bLimit/m_maxBrightness;
 	unsigned char r,g,b;
 	unsigned int H_accent = hue/60;
 	unsigned int bottom = ((255 - sat) * val)>>8;
@@ -260,6 +263,10 @@ bool CShiftPWM::LoadNotTooHigh(void){
 		return 1;
 	}
 
+}
+// BrightnessLimit is meant only for HSV
+void CShiftPWM::SetBrightnessLimit(unsigned char bLimit){
+	m_bLimit=bLimit;
 }
 
 void CShiftPWM::Start(int ledFrequency, unsigned char maxBrightness){

@@ -49,7 +49,7 @@ public:
 	void SetAllRGB(unsigned char r,unsigned char g,unsigned char b);
 	void SetHSV(int led, unsigned int hue, unsigned int sat, unsigned int val, int offset = 0);
 	void SetAllHSV(unsigned int hue, unsigned int sat, unsigned int val);
-
+	void SetBrightnessLimit(unsigned char bLimit);
 private:
 	void OneByOne_core(int delaytime);
 	bool IsValidPin(int pin);
@@ -85,7 +85,7 @@ public:
 	int m_pinGrouping;
 	unsigned char * m_PWMValues;
 	unsigned char m_counter;
-
+	unsigned char m_bLimit;
 };
 
 #endif

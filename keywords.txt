@@ -24,6 +24,7 @@ SetRGB	KEYWORD2
 SetAllHSV	KEYWORD2
 SetAllRGB	KEYWORD2
 SetPinGrouping	KEYWORD2
+SetBrightnessLimit KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
