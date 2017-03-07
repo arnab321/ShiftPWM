@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define F(string_literal) (reinterpret_cast<const __FlashStringHelper *>(PSTR(string_literal)))
 
 #include "CShiftPWM.h"
+#include "gamma.h"
 #include <Arduino.h>
 
 CShiftPWM::CShiftPWM(int timerInUse, bool noSPI, int latchPin, int dataPin, int clockPin) :  // Constants are set in initializer list
@@ -113,6 +114,9 @@ void CShiftPWM::SetGroupOf5(int group, unsigned char v0,unsigned char v1,unsigne
 void CShiftPWM::SetRGB(int led, unsigned char r,unsigned char g,unsigned char b, int offset){
 	int skip = 2*m_pinGrouping*(led/m_pinGrouping); // is not equal to 2*led. Division is rounded down first.
 	if(IsValidPin(led+skip+offset+2*m_pinGrouping) ){
+		r = pgm_read_byte(&gamma8[r]);
+		g = pgm_read_byte(&gamma8[g]);
+		b = pgm_read_byte(&gamma8[b]);
 		m_PWMValues[led+skip+offset]					=( (unsigned int) r * m_maxBrightness)>>8;
 		m_PWMValues[led+skip+offset+m_pinGrouping]		=( (unsigned int) g * m_maxBrightness)>>8;
 		m_PWMValues[led+skip+offset+2*m_pinGrouping]	=( (unsigned int) b * m_maxBrightness)>>8;
@@ -120,6 +124,9 @@ void CShiftPWM::SetRGB(int led, unsigned char r,unsigned char g,unsigned char b,
 }
 
 void CShiftPWM::SetAllRGB(unsigned char r,unsigned char g,unsigned char b){
+	r = pgm_read_byte(&gamma8[r]);
+	g = pgm_read_byte(&gamma8[g]);
+	b = pgm_read_byte(&gamma8[b]);
 	for(int k=0 ; (k+3*m_pinGrouping-1) < m_amountOfOutputs; k+=3*m_pinGrouping){
 		for(int l=0; l<m_pinGrouping;l++){
 			m_PWMValues[k+l]				=	( (unsigned int) r * m_maxBrightness)>>8;
@@ -457,11 +464,11 @@ void CShiftPWM::PrintInterruptLoad(void){
 	//This function prints information on the interrupt settings for ShiftPWM
 	//It runs a delay loop 2 times: once with interrupts enabled, once disabled.
 	//From the difference in duration, it can calculate the load of the interrupt on the program.
-#ifndef ESP8266
+
 	unsigned long start1,end1,time1,start2,end2,time2,k;
 	double load, cycles_per_int, interrupt_frequency;
 
-
+#ifndef ESP8266
 	if(m_timer==1){
 		if(TIMSK1 & (1<<OCIE1A)){
 			// interrupt is enabled, continue
@@ -495,6 +502,7 @@ void CShiftPWM::PrintInterruptLoad(void){
 			}
 		}
 	#endif
+#endif
 
 	//run with interrupt enabled
 	start1 = micros();
@@ -504,6 +512,7 @@ void CShiftPWM::PrintInterruptLoad(void){
 	end1 = micros();
 	time1 = end1-start1;
 
+#ifndef ESP8266
 	//Disable Interrupt
 	if(m_timer==1){
 		bitClear(TIMSK1,OCIE1A);
@@ -517,7 +526,9 @@ void CShiftPWM::PrintInterruptLoad(void){
 			bitClear(TIMSK2,OCIE2A);
 		}
 	#endif
-
+#else
+		timer0_detachInterrupt();
+#endif
 
 	// run with interrupt disabled
 	start2 = micros();
@@ -529,26 +540,32 @@ void CShiftPWM::PrintInterruptLoad(void){
 
 	// ready for calculations
 	load = (double)(time1-time2)/(double)(time1);
-	if(m_timer==1){
-		interrupt_frequency = (F_CPU/m_prescaler)/(OCR1A+1);
-	}
-	#if defined(USBCON)
-		else if(m_timer==3){
-			interrupt_frequency = (F_CPU/m_prescaler)/(OCR3A+1);
+
+	#ifndef ESP8266
+		if(m_timer==1){
+			interrupt_frequency = (F_CPU/m_prescaler)/(OCR1A+1);
 		}
+		#if defined(USBCON)
+			else if(m_timer==3){
+				interrupt_frequency = (F_CPU/m_prescaler)/(OCR3A+1);
+			}
+		#else
+			else if(m_timer==2){
+				interrupt_frequency = (F_CPU/m_prescaler)/(OCR2A+1);
+			}
+		#endif
+		cycles_per_int = load*(F_CPU/interrupt_frequency);
 	#else
-		else if(m_timer==2){
-			interrupt_frequency = (F_CPU/m_prescaler)/(OCR2A+1);
-		}
+		ShiftPWM_timer_init();
 	#endif
-	cycles_per_int = load*(F_CPU/interrupt_frequency);
 
 	//Ready to print information
 	Serial.print(F("Load of interrupt: "));   Serial.println(load,10);
-	Serial.print(F("Clock cycles per interrupt: "));   Serial.println(cycles_per_int);
-	Serial.print(F("Interrupt frequency: ")); Serial.print(interrupt_frequency);   Serial.println(F(" Hz"));
-	Serial.print(F("PWM frequency: ")); Serial.print(interrupt_frequency/(m_maxBrightness+1)); Serial.println(F(" Hz"));
 
+#ifndef ESP8266
+		Serial.print(F("Clock cycles per interrupt: "));   Serial.println(cycles_per_int);
+		Serial.print(F("Interrupt frequency: ")); Serial.print(interrupt_frequency);   Serial.println(F(" Hz"));
+		Serial.print(F("PWM frequency: ")); Serial.print(interrupt_frequency/(m_maxBrightness+1)); Serial.println(F(" Hz"));
 
 	#if defined(USBCON)
 		if(m_timer==1){
